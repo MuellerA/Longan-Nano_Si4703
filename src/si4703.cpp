@@ -72,7 +72,7 @@ bool Si4703::setup()
   return true ;
 }
 
-bool Si4703::read(uint8_t cnt)
+bool Si4703::read(uint8_t cnt) const
 {
   uint16_t data[0x10] ;
 
@@ -177,7 +177,7 @@ bool Si4703::volume(bool up)
   return true ;
 }
 
-uint8_t Si4703::volume()
+uint8_t Si4703::volume() const
 {
   return _sysConfig2 & 0x000f ;
 }
@@ -195,17 +195,17 @@ bool Si4703::stereo(bool on)
   return true ;
 }
 
-bool Si4703::stereo()
+bool Si4703::stereo() const
 {
   return !(_powerCfg & 0x2000) ;
 }
 
-bool Si4703::stereoInd()
+bool Si4703::stereoInd() const
 {
   return _statusRssi & 0x0010 ;
 }
   
-uint16_t Si4703::channel() // in 100kHz
+uint16_t Si4703::channel() const // in 100kHz
 {
   // Channel = 100kHz * channel + 87.5MHz
   //         = (channel + 875) 100kHz
@@ -240,12 +240,12 @@ bool Si4703::channel(uint16_t channel)
   return true ;
 }
 
-uint8_t Si4703::rssi()
+uint8_t Si4703::rssi() const
 {
   return (uint8_t) _data[0x0a] ;
 }
 
-const uint16_t* Si4703::rds()
+const uint16_t* Si4703::rds() const
 {
   read(6) ;
   return &_rdsa ;

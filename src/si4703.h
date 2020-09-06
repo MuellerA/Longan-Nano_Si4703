@@ -10,7 +10,7 @@ public:
 
   bool setup() ;
 
-  bool read(uint8_t cnt = 0x10) ;
+  bool read(uint8_t cnt = 0x10) const ;
   bool write(uint8_t cnt = 0x10) ;
 
   bool enable() ;
@@ -18,14 +18,14 @@ public:
 
   bool seek(bool up) ;
   bool volume(bool up) ;
-  uint8_t volume() ;
+  uint8_t volume() const ;
   bool stereo(bool on) ;
-  bool stereo() ;
-  bool stereoInd() ;
-  uint16_t channel() ; // in 100kHz
+  bool stereo() const ;
+  bool stereoInd() const ;
+  uint16_t channel() const ; // in 100kHz
   bool channel(uint16_t chan) ; // in 100kHz
-  uint8_t rssi() ;
-  const uint16_t* rds() ;
+  uint8_t rssi() const ;
+  const uint16_t* rds() const ;
 
   //uint16_t data(uint8_t idx) ;
   
@@ -33,7 +33,7 @@ private:
 #pragma pack(push, 1)
   union
   {
-    uint16_t _data[0x10] ;
+    mutable uint16_t _data[0x10] ;
     struct
     {
       uint16_t _deviceId ;    //  0
