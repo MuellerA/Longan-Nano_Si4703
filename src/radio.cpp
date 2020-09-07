@@ -28,13 +28,14 @@ using ::RV::GD32VF103::Gpio ;
 class Display
 {
 public:
-  Display(const Si4703 &si4703) :
+  Display(Si4703 &si4703) :
     _lcd(Lcd::lcd()),
-    _laData  (_lcd,   0, 160, 16, 64),
-    _laChan  (_lcd,   0,  80, 16, 16),
-    _laRssi  (_lcd,  80,  60, 16, 16),
-    _laStereo(_lcd, 140,  20, 16, 16),
-    _laMenu  (_lcd,   0, 160, 32, 48),
+    _laData   (_lcd,   0, 160, 16, 64),
+    _laChan   (_lcd,   0,  80, 16, 16),
+    _laRssi   (_lcd,  80,  60, 16, 16),
+    _laStereo (_lcd, 140,  20, 16, 16),
+    _laMenu   (_lcd,   0, 160, 48, 32),
+    _laRdsStation(_lcd,   0, 160, 32, 16),
     _si4703{si4703}, _chan{0xffff}, _rssi{0xffff}, _stereo{0}
   {
   }
@@ -50,13 +51,15 @@ public:
   LcdArea& laData() { return _laData ; }
   LcdArea& laMenu() { return _laMenu ; }
   
-  void update()
+  void update(bool force, bool topOnly)
   {
     _lcd.heartbeat() ;
     
+    _si4703.rds() ;
+    
     // display channel
     {
-      if (_chan != _si4703.channel())
+      if (force || (_chan != _si4703.channel()))
       {
         _chan = _si4703.channel() ;
         _laChan.txtPos(0) ;
@@ -69,7 +72,7 @@ public:
     }
     // display rssi
     {
-      if (_rssi != _si4703.rssi())
+      if (force || (_rssi != _si4703.rssi()))
       {
         _rssi = _si4703.rssi() ;
         _laRssi.txtPos(0) ;
@@ -79,7 +82,7 @@ public:
     }
     // display stereo
     {
-      if (_stereo != (_si4703.stereoInd() ? 'S' : 'M'))
+      if (force || (_stereo != (_si4703.stereoInd() ? 'S' : 'M')))
       {
         _stereo = _si4703.stereoInd() ? 'S' : 'M' ;
         _laStereo.txtPos(0) ;
@@ -87,6 +90,21 @@ public:
         _laStereo.clearEOL() ;
       }
     }
+
+    // rds station
+    {
+      std::string rdsStation = _si4703.rdsStationValid() ? _si4703.rdsStationText() : "" ;
+      if (force || (_rdsStation != rdsStation))
+      {
+        _rdsStation = rdsStation ;
+        _laRdsStation.txtPos(0) ;
+        _laRdsStation.put(_rdsStation.c_str()) ;
+        _laRdsStation.clearEOL() ;
+      }
+    }
+
+    if (topOnly)
+      return ;
 
   }
   
@@ -97,11 +115,13 @@ private:
   LcdArea _laRssi ;
   LcdArea _laStereo ;
   LcdArea _laMenu ;
+  LcdArea _laRdsStation ;
 
-  const Si4703 &_si4703 ;
+  Si4703 &_si4703 ;
   uint16_t _chan ;
   uint16_t _rssi ;
   char     _stereo ;
+  std::string _rdsStation ;
 } ;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -267,7 +287,6 @@ int main()
   Display disp(si4703) ;
 
   disp.setup() ;
-
   
   if (!si4703.setup()  ||
       !si4703.read()   ||
@@ -295,30 +314,36 @@ int main()
                       }
       },
       {
-        "Seek (+)", [&si4703]()
+       "Seek (+)", [&si4703, &disp]()
                    {
                      si4703.seek(true) ;
                      return false ;
-                   } // todo
+                   }
       },
       {
-        "Seek (-)", [&si4703]()
+       "Seek (-)", [&si4703, &disp]()
                    {
                      si4703.seek(false) ;
                      return false ;
                    } // todo
       }
      },
-     [&disp](){ disp.update() ; }
+        [&disp](){ disp.update(false, true) ; }
     } ;
 
   menu.setup() ;
   
-  
   while (true)
   {
-    if (!menu.select())
-      disp.update() ;
+    if (menu.select())
+    {
+      disp.laMenu().clear() ;
+      disp.update(true, false) ;
+    }
+    else
+    {
+      disp.update(false, false) ;
+    }
   }
   
 }

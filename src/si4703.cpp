@@ -16,13 +16,14 @@ extern "C"
 
 using ::RV::GD32VF103::I2c ;
 using ::RV::GD32VF103::Gpio ;
+using ::RV::GD32VF103::GpioIrq ;
 using ::RV::GD32VF103::TickTimer ;
 
 I2c  &i2c(I2c::i2c0()) ;
 Gpio &gpioSen(Gpio::gpioB15()) ;
 Gpio &gpioRst(Gpio::gpioB14()) ;
-Gpio &gpioGpio1(Gpio::gpioB13()) ;
-Gpio &gpioGpio2(Gpio::gpioB12()) ;
+//Gpio &gpioGpio1(Gpio::gpioB13()) ;
+GpioIrq &gpioGpio2(GpioIrq::gpioA4()) ;
 
 static const uint8_t Addr{0x10} ;
 
@@ -37,9 +38,10 @@ bool Si4703::setup()
   i2c.setup(42, 400) ;
   gpioSen.setup(Gpio::Mode::OUT_PP) ;
   gpioRst.setup(Gpio::Mode::OUT_PP) ;
-  gpioGpio1.setup(Gpio::Mode::IN_FL) ;
-  gpioGpio2.setup(Gpio::Mode::IN_FL) ;
+  //gpioGpio1.setup(Gpio::Mode::IN_FL) ;
+  gpioGpio2.setup(GpioIrq::Mode::IN_FL, [this](bool rising){ if (!rising) _irqRdsInd = true ; }) ;
 
+  // bus mode selection method 1, 2-wire
   gpioRst.low() ;
   gpioSen.high() ;
   TickTimer::delayMs(100) ;
@@ -138,6 +140,9 @@ bool Si4703::seek(bool up)
   if (!write(1))
     return false ;
 
+  _rdsStationValid = 0x00 ;
+  _irqRdsInd = false ;
+  
   while (true)
   {
     TickTimer::delayMs(500) ;
@@ -245,10 +250,58 @@ uint8_t Si4703::rssi() const
   return (uint8_t) _data[0x0a] ;
 }
 
-const uint16_t* Si4703::rds() const
+void Si4703::rdsStation(uint8_t offset, char ch1, char ch2)
 {
+  uint8_t offsetData = offset << 1 ;
+  uint8_t validMask = 1 << offset ;
+  
+  if (_rdsStationValid & validMask)
+  {
+    if ((_rdsStationText[offsetData  ] == ch1) && (_rdsStationText[offsetData+1] == ch2))
+      return ; // no chagne
+    _rdsStationValid = validMask ;
+  }
+  else
+  {
+    _rdsStationValid |= validMask ;
+  }
+
+  _rdsStationText[offsetData  ] = ch1 ;
+  _rdsStationText[offsetData+1] = ch2 ;
+}
+
+bool        Si4703::rdsStationValid() const { return _rdsStationValid == 0x0f ; }
+std::string Si4703::rdsStationText()  const { return std::string(_rdsStationText, 8) ; }
+
+void Si4703::rds()
+{
+  if (!_irqRdsInd)
+    return ;
+  _irqRdsInd = false ;
+  
   read(6) ;
-  return &_rdsa ;
+  switch (_rdsB & 0xf800)
+  {
+  case 0x0000: // 0 A Basic tuning and switching information
+  case 0x0800: // 0 B
+    //tp.Set((data[1] & 0x0400) == 0x0400) ; // in each pkt / but call only in 0 A/B
+    rdsStation(_rdsB & 0x03, _rdsD >> 8, _rdsD & 0xff) ;
+    return ;
+
+  case 0x2000: // 2 A RadioText only
+    //text.Set(data[1] & 0x0f, data[2] >> 8, data[2], data[3] >> 8, data[3]) ;
+    return ;
+
+  case 0x2800: // 2 B RadioText only
+    {
+    }
+    return ;
+
+  case 0x4000: // 4 A Clock-time and date only
+    //time(_rdsC, _rdsD) ;
+    return ;
+
+  }
 }
   
 //uint16_t Si4703::data(uint8_t idx)

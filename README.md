@@ -10,6 +10,6 @@
   <tr><td>SCLK</td><td>B7</td></tr>
   <tr><td>/SEN</td><td>B15</td></tr>
   <tr><td>/RST</td><td>B14</td></tr>
-  <tr><td>GPIO1</td><td>B13</td></tr>
-  <tr><td>GPIO2</td><td>B12</td></tr>
+  <tr><td>GPIO1</td><td>n.c.</td></tr>
+  <tr><td>GPIO2</td><td>A4</td></tr>
 </table>
