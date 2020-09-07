@@ -2,6 +2,11 @@
 // si4703.h
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <string>
+#include <cstdint>
+
+#pragma once
+
 class Si4703
 {
 public:
@@ -31,19 +36,12 @@ public:
   void rds() ;
   bool rdsStationValid() const ;
   std::string rdsStationText() const ;
+  bool rdsTimeValid() const ;
+  std::string rdsTimeText() const ;
 
 private:
   void rdsStation(uint8_t offset, char ch1, char ch2) ;
-  /*
-  void time(uint16_t hi, uint16_t lo)
-  {
-    uint8_t min  = ( lo & 0b0000111111000000) >>  6 ;
-    uint8_t hour = ((hi & 0b0000000000000001) <<  4) |
-                   ((lo & 0b1111000000000000) >> 12) ;
-    uint8_t offset     = (lo & 0b0000000000011111) ;
-    uint8_t offsetSign = (lo & 0b0000000000100000) ;
-  }
-  */
+  void rdsTime(uint16_t hi, uint16_t lo) ;
   
 #pragma pack(push, 1)
   union
@@ -74,6 +72,8 @@ private:
 
   char    _rdsStationText[8] ;
   uint8_t _rdsStationValid{0x00} ;
+  char    _rdsTimeText[5] ;
+  uint8_t _rdsTimeValid{0x00} ;
 } ;
 
 ////////////////////////////////////////////////////////////////////////////////

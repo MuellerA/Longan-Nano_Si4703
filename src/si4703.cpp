@@ -10,7 +10,7 @@ extern "C"
 #include "GD32VF103/i2c.h"
 #include "GD32VF103/gpio.h"
 #include "GD32VF103/time.h"
-
+#include "Longan/toStr.h"
 
 #include "si4703.h"
 
@@ -141,6 +141,7 @@ bool Si4703::seek(bool up)
     return false ;
 
   _rdsStationValid = 0x00 ;
+  _rdsTimeValid = 0x00 ;
   _irqRdsInd = false ;
   
   while (true)
@@ -273,6 +274,72 @@ void Si4703::rdsStation(uint8_t offset, char ch1, char ch2)
 bool        Si4703::rdsStationValid() const { return _rdsStationValid == 0x0f ; }
 std::string Si4703::rdsStationText()  const { return std::string(_rdsStationText, 8) ; }
 
+void Si4703::rdsTime(uint16_t hi, uint16_t lo)
+{
+  uint8_t min  = ( lo & 0b0000111111000000) >>  6 ;
+  uint8_t hour = ((hi & 0b0000000000000001) <<  4) |
+    ((lo & 0b1111000000000000) >> 12) ;
+  uint8_t offset     = (lo & 0b0000000000011111) ;
+  uint8_t offsetSign = (lo & 0b0000000000100000) ;
+
+  if (offsetSign) // negative / west
+  {
+    if (offset & 1) // half hour
+    {
+      if (min < 30)
+      {
+        min += 30 ;
+        if (hour == 0)
+          hour = 23 ;
+        else
+          hour -= 1 ;
+      }
+      else
+      {
+        min -= 30 ;
+      }
+    }
+    offset >>= 1 ; // hours
+    if (hour < (0+offset))
+      hour = hour + 24 - offset ;
+    else
+      hour -= offset ;
+  }
+  else // positive / east
+  {
+    if (offset & 1) // half hour
+    {
+      if (min >= 30)
+      {
+        min -= 30 ;
+        if (hour == 23)
+          hour = 0 ;
+        else
+          hour += 1 ;
+      }
+      else
+      {
+        min += 30 ;
+      }
+    }
+    offset >>= 1 ; // hours
+    if (hour >= (24-offset))
+      hour = hour - 24 + offset ;
+    else
+      hour += offset ;
+  }
+
+  ::RV::toStr(hour, _rdsTimeText + 0, 2, '0') ;
+  ::RV::toStr(min , _rdsTimeText + 3, 2, '0') ;
+  _rdsTimeText[2] = ':' ;
+
+  _rdsTimeValid = 0x0f ;
+}
+
+bool        Si4703::rdsTimeValid() const { return _rdsTimeValid == 0x0f ; }
+std::string Si4703::rdsTimeText()  const { return std::string(_rdsTimeText, 5) ; }
+
+
 void Si4703::rds()
 {
   if (!_irqRdsInd)
@@ -298,7 +365,7 @@ void Si4703::rds()
     return ;
 
   case 0x4000: // 4 A Clock-time and date only
-    //time(_rdsC, _rdsD) ;
+    rdsTime(_rdsC, _rdsD) ;
     return ;
 
   }
