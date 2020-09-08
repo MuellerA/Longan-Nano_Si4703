@@ -38,6 +38,7 @@ private:
   ::RV::Longan::LcdArea _laMenu ;
   ::RV::Longan::LcdArea _laRdsStation ;
   ::RV::Longan::LcdArea _laRdsTime ;
+  ::RV::Longan::LcdArea _laRdsText ;
 
   Si4703 &_si4703 ;
   uint16_t _chan ;
@@ -45,6 +46,7 @@ private:
   char     _stereo ;
   std::string _rdsStation ;
   std::string _rdsTime ;
+  std::string _rdsText ;
 } ;
 
 ////////////////////////////////////////////////////////////////////////////////

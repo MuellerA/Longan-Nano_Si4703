@@ -5,6 +5,8 @@
 #include <string>
 #include <cstdint>
 
+#include "GD32VF103/time.h"
+
 #pragma once
 
 class Si4703
@@ -35,13 +37,16 @@ public:
   
   void rds() ;
   bool rdsStationValid() const ;
-  std::string rdsStationText() const ;
+  const std::string& rdsStationText() const ;
   bool rdsTimeValid() const ;
-  std::string rdsTimeText() const ;
+  std::string rdsTimeText() ;
+  bool rdsTextValid() const ;
+  const std::string& rdsTextText() const ;
 
 private:
   void rdsStation(uint8_t offset, char ch1, char ch2) ;
   void rdsTime(uint16_t hi, uint16_t lo) ;
+  void rdsText(uint8_t offset, char ch1, char ch2, char ch3, char ch4) ;
   
 #pragma pack(push, 1)
   union
@@ -72,8 +77,18 @@ private:
 
   char    _rdsStationText[8] ;
   uint8_t _rdsStationValid{0x00} ;
-  char    _rdsTimeText[5] ;
+  std::string _rdsStationStr ;
+  
+  char    _rdsTimeText[8] ;
   uint8_t _rdsTimeValid{0x00} ;
+  uint8_t _rdsTimeH, _rdsTimeM, _rdsTimeS ;
+  uint64_t _rdsTimeTick ;
+  ::RV::GD32VF103::TickTimer _rdsTimeTimer{1000, true, true} ;
+  
+  char    _rdsTextText[64] ;
+  uint8_t _rdsTextLen{0} ;
+  uint16_t _rdsTextValid{0x0000} ;
+  std::string _rdsTextStr ;
 } ;
 
 ////////////////////////////////////////////////////////////////////////////////

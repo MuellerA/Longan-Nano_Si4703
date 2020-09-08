@@ -62,8 +62,8 @@ bool Si4703::setup()
   _sysConfig1 &= ~0x900c ; // RDS Interrupt enable, RDS Enable, GPIO2 Irq
   _sysConfig1 |=  0x9004 ;
     
-  _sysConfig2 &= ~0x00ff ; // 87.5–108 MHz (US / Europe, Default), 100 kHz (Europe / Japan), Volume 7
-  _sysConfig2 |=  0x0017 ;
+  _sysConfig2 &= ~0x00ff ; // 87.5–108 MHz (US / Europe, Default), 100 kHz (Europe / Japan), Volume 5
+  _sysConfig2 |=  0x0015 ;
 
   _sysConfig3 &= ~0x00ff ; // Seek SNR Threshold, Seek FM Impulse Detection Threshold
   _sysConfig3 |=  0x0036 ;
@@ -140,8 +140,8 @@ bool Si4703::seek(bool up)
   if (!write(1))
     return false ;
 
-  _rdsStationValid = 0x00 ;
-  _rdsTimeValid = 0x00 ;
+  _rdsStationValid = 0x00   ; _rdsStationStr.clear() ;
+  _rdsTextValid    = 0x0000 ; _rdsTextStr.clear() ;
   _irqRdsInd = false ;
   
   while (true)
@@ -269,16 +269,22 @@ void Si4703::rdsStation(uint8_t offset, char ch1, char ch2)
 
   _rdsStationText[offsetData  ] = ch1 ;
   _rdsStationText[offsetData+1] = ch2 ;
+
+  if (_rdsStationValid == 0x0f)
+    _rdsStationStr.assign(_rdsStationText, 8) ;
 }
 
-bool        Si4703::rdsStationValid() const { return _rdsStationValid == 0x0f ; }
-std::string Si4703::rdsStationText()  const { return std::string(_rdsStationText, 8) ; }
+bool               Si4703::rdsStationValid() const { return _rdsStationValid == 0x0f ; }
+const std::string& Si4703::rdsStationText()  const { return _rdsStationStr ; }
 
 void Si4703::rdsTime(uint16_t hi, uint16_t lo)
 {
-  uint8_t min  = ( lo & 0b0000111111000000) >>  6 ;
-  uint8_t hour = ((hi & 0b0000000000000001) <<  4) |
-    ((lo & 0b1111000000000000) >> 12) ;
+  _rdsTimeTimer.restart() ;
+
+  _rdsTimeM = ( lo & 0b0000111111000000) >>  6 ;
+  _rdsTimeH = ((hi & 0b0000000000000001) <<  4) |
+              ((lo & 0b1111000000000000) >> 12) ;
+  _rdsTimeS = 0 ;
   uint8_t offset     = (lo & 0b0000000000011111) ;
   uint8_t offsetSign = (lo & 0b0000000000100000) ;
 
@@ -286,58 +292,129 @@ void Si4703::rdsTime(uint16_t hi, uint16_t lo)
   {
     if (offset & 1) // half hour
     {
-      if (min < 30)
+      if (_rdsTimeM < 30)
       {
-        min += 30 ;
-        if (hour == 0)
-          hour = 23 ;
+        _rdsTimeM += 30 ;
+        if (_rdsTimeH == 0)
+          _rdsTimeH = 23 ;
         else
-          hour -= 1 ;
+          _rdsTimeH -= 1 ;
       }
       else
       {
-        min -= 30 ;
+        _rdsTimeM -= 30 ;
       }
     }
     offset >>= 1 ; // hours
-    if (hour < (0+offset))
-      hour = hour + 24 - offset ;
+    if (_rdsTimeH < (0+offset))
+      _rdsTimeH = _rdsTimeH + 24 - offset ;
     else
-      hour -= offset ;
+      _rdsTimeH -= offset ;
   }
   else // positive / east
   {
     if (offset & 1) // half hour
     {
-      if (min >= 30)
+      if (_rdsTimeM >= 30)
       {
-        min -= 30 ;
-        if (hour == 23)
-          hour = 0 ;
+        _rdsTimeM -= 30 ;
+        if (_rdsTimeH == 23)
+          _rdsTimeH = 0 ;
         else
-          hour += 1 ;
+          _rdsTimeH += 1 ;
       }
       else
       {
-        min += 30 ;
+        _rdsTimeM += 30 ;
       }
     }
     offset >>= 1 ; // hours
-    if (hour >= (24-offset))
-      hour = hour - 24 + offset ;
+    if (_rdsTimeH >= (24-offset))
+      _rdsTimeH = _rdsTimeH - 24 + offset ;
     else
-      hour += offset ;
+      _rdsTimeH += offset ;
   }
 
-  ::RV::toStr(hour, _rdsTimeText + 0, 2, '0') ;
-  ::RV::toStr(min , _rdsTimeText + 3, 2, '0') ;
+  ::RV::toStr(_rdsTimeH, _rdsTimeText + 0, 2, '0') ;
+  ::RV::toStr(_rdsTimeM, _rdsTimeText + 3, 2, '0') ;
+  ::RV::toStr(_rdsTimeS, _rdsTimeText + 6, 2, '0') ;
   _rdsTimeText[2] = ':' ;
+  _rdsTimeText[5] = ':' ;
 
   _rdsTimeValid = 0x0f ;
 }
 
 bool        Si4703::rdsTimeValid() const { return _rdsTimeValid == 0x0f ; }
-std::string Si4703::rdsTimeText()  const { return std::string(_rdsTimeText, 5) ; }
+std::string Si4703::rdsTimeText()
+{
+  while (_rdsTimeTimer())
+  {
+    _rdsTimeS += 1 ;
+    if (_rdsTimeS >= 60)
+    {
+      _rdsTimeS -= 60 ;
+      _rdsTimeM += 1 ;
+      if (_rdsTimeM >= 60)
+      {
+        _rdsTimeM -= 60 ;
+        _rdsTimeH += 1 ;
+        if (_rdsTimeH >= 24)
+        {
+          _rdsTimeH -= 24 ;
+        }
+      }
+    }
+
+    ::RV::toStr(_rdsTimeH, _rdsTimeText + 0, 2, '0') ;
+    ::RV::toStr(_rdsTimeM, _rdsTimeText + 3, 2, '0') ;
+    ::RV::toStr(_rdsTimeS, _rdsTimeText + 6, 2, '0') ;
+    _rdsTimeText[2] = ':' ;
+    _rdsTimeText[5] = ':' ;
+  }
+  
+  return std::string(_rdsTimeText, 8) ;
+}
+
+void Si4703::rdsText(uint8_t offset, char ch1, char ch2, char ch3, char ch4)
+{
+  uint8_t offsetData = offset << 2 ;
+  uint16_t validMask = 1 << offset ;
+  uint8_t len = 0xff ;
+    
+  if (_rdsTextValid & validMask)
+  {
+    if ((_rdsTextText[offsetData  ] == ch1) &&
+        (_rdsTextText[offsetData+1] == ch2) &&
+        (_rdsTextText[offsetData+2] == ch3) &&
+        (_rdsTextText[offsetData+3] == ch4))
+      return ; // no change
+
+    _rdsTextLen = 64 ;
+    _rdsTextValid = validMask ;
+  }
+  else
+  {
+    _rdsTextValid |= validMask ;
+  }
+
+  _rdsTextText[offsetData+3] = ch4 ; if (ch4 == '\r') len = offsetData + 3 ;
+  _rdsTextText[offsetData+2] = ch3 ; if (ch3 == '\r') len = offsetData + 2 ;
+  _rdsTextText[offsetData+1] = ch2 ; if (ch2 == '\r') len = offsetData + 1 ;
+  _rdsTextText[offsetData  ] = ch1 ; if (ch1 == '\r') len = offsetData + 0 ;
+  
+  if (len != 0xff)
+  {
+    _rdsTextLen = len ;
+    for (uint16_t i = validMask ; i ; i <<= 1)
+      _rdsTextValid |= i ;
+  }
+
+  if (_rdsTextValid == 0xffff)
+    _rdsTextStr.assign(_rdsTextText, _rdsTextLen) ;
+}
+
+bool               Si4703::rdsTextValid() const { return _rdsTextValid == 0xffff ; }
+const std::string& Si4703::rdsTextText()  const { return _rdsTextStr ; }
 
 
 void Si4703::rds()
@@ -356,7 +433,7 @@ void Si4703::rds()
     return ;
 
   case 0x2000: // 2 A RadioText only
-    //text.Set(data[1] & 0x0f, data[2] >> 8, data[2], data[3] >> 8, data[3]) ;
+    rdsText(_rdsB & 0x0f, _rdsC >> 8, _rdsC, _rdsD >> 8, _rdsD) ;
     return ;
 
   case 0x2800: // 2 B RadioText only

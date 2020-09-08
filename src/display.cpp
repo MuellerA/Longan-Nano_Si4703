@@ -17,13 +17,14 @@ using ::RV::Longan::LcdArea ;
 
 Display::Display(Si4703 &si4703) :
   _lcd(Lcd::lcd()),
-  _laData   (_lcd,   0, 160, 16, 64),
-  _laChan   (_lcd,   0,  80, 16, 16),
-  _laRssi   (_lcd,  80,  60, 16, 16),
-  _laStereo (_lcd, 140,  20, 16, 16),
-  _laMenu   (_lcd,   0, 160, 48, 32),
-  _laRdsStation(_lcd,   0,  80, 32, 16),
-  _laRdsTime   (_lcd,  80, 160, 32, 16),
+  _laData   (_lcd,   0, 160,  0, 64),
+  _laChan   (_lcd,   0,  80,  0, 16),
+  _laRssi   (_lcd,  80,  60,  0, 16),
+  _laStereo (_lcd, 140,  20,  0, 16),
+  _laMenu   (_lcd,   0, 160, 32, 32),
+  _laRdsStation(_lcd,   0,  80, 16, 16),
+  _laRdsTime   (_lcd,  80, 160, 16, 16),
+  _laRdsText   (_lcd,   0, 160, 32, 48),
   _si4703{si4703}, _chan{0xffff}, _rssi{0xffff}, _stereo{0}
 {
 }
@@ -102,16 +103,16 @@ void Display::update(bool force, bool topOnly)
 
   // rds station
   {
-    std::string rdsStation = _si4703.rdsStationValid() ? _si4703.rdsStationText() : "" ;
+    std::string rdsStation = _si4703.rdsStationText() ;
     if (_rdsStation != rdsStation)
     {
       _rdsStation = rdsStation ;
-      _laRdsStation.txtPos(0) ;
+      _laRdsStation.clear() ;
       _laRdsStation.put(_rdsStation.c_str()) ;
-      _laRdsStation.clearEOL() ;
     }
   }
 
+  // rds time
   {
     std::string rdsTime = _si4703.rdsTimeValid() ? _si4703.rdsTimeText() : "" ;
     if (_rdsTime != rdsTime)
@@ -126,6 +127,17 @@ void Display::update(bool force, bool topOnly)
   if (topOnly)
     return ;
 
+  // rds text
+  {
+    std::string rdsText = _si4703.rdsTextText() ;
+    if (_rdsText != rdsText)
+    {
+      _rdsText = rdsText ;
+      _laRdsText.clear() ;
+      _laRdsText.put(_rdsText.c_str()) ;
+    }
+
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
