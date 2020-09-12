@@ -21,7 +21,7 @@ Display::Display(Si4703 &si4703) :
   _laChan   (_lcd,   0,  80,  0, 16),
   _laRssi   (_lcd,  80,  60,  0, 16),
   _laStereo (_lcd, 140,  20,  0, 16),
-  _laMenu   (_lcd,   0, 160, 32, 32),
+  _laMenu   (_lcd,   0, 160, 32, 48),
   _laRdsStation(_lcd,   0,  80, 16, 16),
   _laRdsTime   (_lcd,  80, 160, 16, 16),
   _laRdsText   (_lcd,   0, 160, 32, 48),
@@ -33,8 +33,14 @@ void Display::setup()
 {
   _lcd.setup() ;
 
-  LcdArea laTitle (_lcd, 0, 110,  0, 16, &::RV::Longan::Roboto_Bold7pt7b , 0xffffffUL, 0xa00000UL) ;
-  laTitle.put("  R A D I O  ") ;
+  LcdArea laTitle (_lcd, 0, 160,  0, 80, &::RV::Longan::Roboto_Bold7pt7b , 0xffffffUL, 0xa00000UL) ;
+  laTitle.clear() ;
+  laTitle.put("R A D I O", 80, 40, 0, 0) ;
+}
+
+void Display::clear()
+{
+  _lcd.clear() ;
 }
 
 void Display::menuOn()
@@ -57,6 +63,62 @@ void Display::error(const std::string &txt)
 {
   _laMenu.clear() ;
   _laMenu.txtPos(0) ; _laMenu.put(txt.c_str()) ;
+}
+
+std::string rdsToLcd(const std::string &rds)
+{
+  std::string lcd ;
+  uint8_t table{0} ;
+
+  for (uint8_t idx = 0 ; idx < (uint8_t)rds.size() ; ++idx)
+  {
+    char c = rds[idx] ;
+
+    if ((0x20 <= c) && (c <= 0x7d))
+    {
+      lcd += c ;
+    }
+    else if ((c == 0x0f) && (rds[idx+1] == 0x0f))
+    {
+      table = 0 ;
+      idx += 1 ;
+    }
+    else if ((c == 0x0e) && (rds[idx+1] == 0x0e))
+    {
+      table = 1 ;
+      idx += 1 ;
+    }
+    else if ((c == 0x1b) && (rds[idx+1] == 0x6e))
+    {
+      table = 1 ;
+      idx += 1 ;
+    }
+    else
+    {
+      if ((table == 0) || (table == 1))
+      {
+        switch ((uint8_t)c)
+        {
+        case 0x8d: lcd += "ss" ; continue ;
+        case 0x91: lcd += "ae" ; continue ;
+        case 0x97: lcd += "oe" ; continue ;
+        case 0x99: lcd += "ue" ; continue ;
+        }
+      }
+      if (table == 0)
+      {
+        switch ((uint8_t)c)
+        {
+        case 0xd1: lcd += "Ae" ; continue ;
+        case 0xd7: lcd += "Oe" ; continue ;
+        case 0xd9: lcd += "Ue" ; continue ;
+        }
+      }
+      lcd += "?" ;
+    }
+  }
+
+  return lcd ;
 }
 
 void Display::update(bool force, bool topOnly)
@@ -108,7 +170,8 @@ void Display::update(bool force, bool topOnly)
     {
       _rdsStation = rdsStation ;
       _laRdsStation.clear() ;
-      _laRdsStation.put(_rdsStation.c_str()) ;
+      std::string txt = rdsToLcd(_rdsStation) ;
+      _laRdsStation.put(txt.c_str()) ;
     }
   }
 
@@ -134,7 +197,8 @@ void Display::update(bool force, bool topOnly)
     {
       _rdsText = rdsText ;
       _laRdsText.clear() ;
-      _laRdsText.put(_rdsText.c_str()) ;
+      std::string txt = rdsToLcd(_rdsText) ;
+      _laRdsText.put(txt.c_str()) ;
     }
 
   }

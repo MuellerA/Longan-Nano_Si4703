@@ -23,6 +23,7 @@ public:
 
   void setup() ;
 
+  void clear() ;
   void menuOn() ;
   void menu(const std::string &txt1, const std::string &txt2) ;
   void menuOff() ;

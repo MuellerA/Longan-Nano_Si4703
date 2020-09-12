@@ -60,6 +60,7 @@ int main()
       [&disp](){ disp.update(false, true) ; }
     } ;
 
+  disp.clear() ;
   menu.setup() ;
   
   while (true)

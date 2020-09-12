@@ -2,6 +2,8 @@
 
 <p>Connect a Si4703 module to a Longan Nano and listen to FM radio</p>
 
+<img src="img.jpg" alt="" width="500px"/>
+
 <table>
   <tr><th>Si4703</th><th>Longan Nano</th></tr>
   <tr><td>3.3V</td><td>3.3V</td></tr>

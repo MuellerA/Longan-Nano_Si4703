@@ -63,14 +63,14 @@ bool Si4703::setup()
   _sysConfig1 |=  0x9004 ;
     
   _sysConfig2 &= ~0x00ff ; // 87.5–108 MHz (US / Europe, Default), 100 kHz (Europe / Japan), Volume 5
-  _sysConfig2 |=  0x0015 ;
+  _sysConfig2 |=  0x1415 ; // Seek Threshold 20
 
   _sysConfig3 &= ~0x00ff ; // Seek SNR Threshold, Seek FM Impulse Detection Threshold
   _sysConfig3 |=  0x0036 ;
     
   if (!write(5))
     return false ;
-    
+
   return true ;
 }
 
@@ -80,7 +80,7 @@ bool Si4703::read(uint8_t cnt) const
 
   if (cnt > 0x10)
     cnt = 0x10 ;
-  
+
   if (!i2c.get(Addr, (uint8_t*) data, cnt*sizeof(uint16_t)))
     return false ;
 
@@ -143,9 +143,13 @@ bool Si4703::seek(bool up)
   _rdsStationValid = 0x00   ; _rdsStationStr.clear() ;
   _rdsTextValid    = 0x0000 ; _rdsTextStr.clear() ;
   _irqRdsInd = false ;
-  
+
+  TickTimer t(7500) ;
   while (true)
   {
+    if (t())
+      return false ;
+    
     TickTimer::delayMs(500) ;
       
     if (!read(2))
@@ -428,7 +432,6 @@ void Si4703::rds()
   {
   case 0x0000: // 0 A Basic tuning and switching information
   case 0x0800: // 0 B
-    //tp.Set((data[1] & 0x0400) == 0x0400) ; // in each pkt / but call only in 0 A/B
     rdsStation(_rdsB & 0x03, _rdsD >> 8, _rdsD & 0xff) ;
     return ;
 
@@ -448,11 +451,6 @@ void Si4703::rds()
   }
 }
   
-//uint16_t Si4703::data(uint8_t idx)
-//{
-//  return _data[idx] ;
-//}
-
 ////////////////////////////////////////////////////////////////////////////////
 // EOF
 ////////////////////////////////////////////////////////////////////////////////
