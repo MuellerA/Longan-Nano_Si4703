@@ -1,0 +1,23 @@
+name: Test Build
+on: push
+
+jobs:
+  main:
+    name: Build using PlatformIO
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Python
+        uses: actions/setup-python@v1
+        with:
+          python-version: '3.x'
+      - name: Install Platform IO
+        run: |
+          python -m pip install --upgrade pip
+          pip install -U platformio
+      - name: Install GD32V
+        run: platformio platform install gd32v@1.2.0 --with-package framework-gd32vf103-sdk --with-package tool-dfuutil
+      - name: Remove bool definition killing C++ from SDK 
+        run: sed -i -e 179d ~/.platformio/packages/framework-gd32vf103-sdk/GD32VF103_standard_peripheral/gd32vf103.h
+      - name: Build
+        run: platformio run
