@@ -3,13 +3,14 @@
 <p>Connect a Si4703 module to a Longan Nano and listen to FM radio</p>
 
 <img src="img.jpg" alt="" width="500px"/>
+<img src="img2.jpg" alt="" width="500px"/>
 
 <table>
   <tr><th>Si4703</th><th>Longan Nano</th></tr>
   <tr><td>3.3V</td><td>3.3V</td></tr>
   <tr><td>GND</td><td>GND</td></tr>
-  <tr><td>SDIO</td><td>B6</td></tr>
-  <tr><td>SCLK</td><td>B7</td></tr>
+  <tr><td>SDIO</td><td>B7</td></tr>
+  <tr><td>SCLK</td><td>B6</td></tr>
   <tr><td>/SEN</td><td>B15</td></tr>
   <tr><td>/RST</td><td>B14</td></tr>
   <tr><td>GPIO1</td><td>n.c.</td></tr>
